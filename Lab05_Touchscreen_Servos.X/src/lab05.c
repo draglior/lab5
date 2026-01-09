@@ -19,6 +19,9 @@
 #define PWM_MAX_US 2000
 #define PWM_CYC_US 20000
 
+#define TOUCH_DIM_X 0
+#define TOUCH_DIM_Y 1
+
 void servo_initialize(void){
     //configure timer 2 for pwm (20ms period)
     CLEARBIT(T2CONbits.TON);
@@ -30,7 +33,7 @@ void servo_initialize(void){
     //configure output compare 7 (servo y)and  8(servo X)
     CLEARBIT(TRISDbits.TRISD6);
     CLEARBIT(TRISDbits.TRISD7);
-    //SET INITIAL DUTY CYCLE (SAFE MIDDLE POSITION)
+
     OC7R = 0;
     OC7RS = 0;
     OC8R = 0;
@@ -41,35 +44,49 @@ void servo_initialize(void){
     // SET TIMER 2
     SETBIT(T2CONbits.TON);
 }
-void touchscreen_initialize(void){
-//CONFIGURATION CONTROL PINS (E1,E2,E3) as outputs
+
+void touchscreen_initialize(void)
+{
+    // Control pins E1,E2,E3 as outputs
     CLEARBIT(TRISEbits.TRISE1);
     CLEARBIT(TRISEbits.TRISE2);
     CLEARBIT(TRISEbits.TRISE3);
+
+    // Safe state
     CLEARBIT(PORTEbits.RE1);
     SETBIT(PORTEbits.RE2);
     SETBIT(PORTEbits.RE3);
-//configuration ADC1
+
+    // ADC off during config
     CLEARBIT(AD1CON1bits.ADON);
-//Setup AN15 (X read)and An9 (Y read)as analog inputs
-    CLEARBIT(AD1PCFGLbits.PCFG15); //AN15 analog
-    CLEARBIT(AD1PCFGLbits.PCFG9);  //AN9 Analog
-//Basic ADC CONFIG
+
+    // AN15 (X) and AN9 (Y) as analog
+    CLEARBIT(AD1PCFGLbits.PCFG15);
+    CLEARBIT(AD1PCFGLbits.PCFG9);
+    
+    AD1CON2 = 0;
+    
+    // ADC basic config
     CLEARBIT(AD1CON1bits.AD12B);
-    AD1CON1bits.FORM=0;
-    AD1CON1bits.SSRC=7;
-    AD1CON2=0;
-    AD1CON3bits.ADRC= 0;
-    AD1CON3bits.SAMC =0x1F;
-    AD1CON3bits.ADCS =2;
-    SETBIT(AD1CON1bits.ADON); //enable adc
+    AD1CON1bits.FORM = 0;
+    AD1CON1bits.SSRC = 7;
+
+    AD1CON3bits.ADRC = 0;
+    AD1CON3bits.SAMC = 0x1F;
+    AD1CON3bits.ADCS = 15;
+
+    AD1CHS0bits.CH0SA = 15;
+
+    // ADC on
+    SETBIT(AD1CON1bits.ADON);
 }
+
 
 void servo_setduty(uint8_t servo, uint16_t duty_us){
     if (duty_us < 1000) duty_us = 1000;
     if (duty_us > 2000) duty_us = 2000;
     
-    uint16_t pulseTicks = duty_us / 5; //5us per tick (from the timer2)
+    uint16_t pulseTicks = duty_us / 5; //5us per tick (64/Fcy)
     
     uint16_t invertedTicks = 4000 - pulseTicks; //20ms/5us = period ticks
     if (servo == 0) OC7RS = invertedTicks;
@@ -77,34 +94,125 @@ void servo_setduty(uint8_t servo, uint16_t duty_us){
    
 }
 
+void touchscreen_set_dimension(uint8_t dim)
+{
+    CLEARBIT(AD1CON1bits.ADON);
 
-void main_loop()
+    if (dim == 0)
+    {
+        CLEARBIT(PORTEbits.RE1);
+        SETBIT(PORTEbits.RE2);
+        SETBIT(PORTEbits.RE3);
+
+        // Select AN15 for X read
+        AD1CHS0bits.CH0SA = 15;
+    }
+    else if (dim == 1)
+    {
+        SETBIT(PORTEbits.RE1);
+        CLEARBIT(PORTEbits.RE2);
+        CLEARBIT(PORTEbits.RE3);
+
+        // Select AN9 for Y read
+        AD1CHS0bits.CH0SA = 9;
+    }
+    
+    else
+    {
+        SETBIT(PORTEbits.RE1);
+        SETBIT(PORTEbits.RE2);
+        SETBIT(PORTEbits.RE3);
+    }
+    
+    SETBIT(AD1CON1bits.ADON);
+    __delay_ms(10);
+}
+
+uint16_t touchscreen_read(void)
+{
+    // Start sampling
+    AD1CON1bits.SAMP = 1;
+    // End sampling, start conversion
+    AD1CON1bits.SAMP = 0;
+
+    // Wait for conversion to finish
+    while (AD1CON1bits.DONE == 0) { }
+    AD1CON1bits.DONE = 0;
+
+    // Return 10-bit result (0..1023) stored in 16-bit container
+    return (uint16_t)ADC1BUF0;
+}
+
+
+void main_loop(void)
 {
     // print assignment information
     lcd_printf("Lab05: Touchscreen &\r\n");
     lcd_printf("       Servos");
     lcd_locate(0, 2);
-    lcd_printf("Group: GroupName");
+    lcd_printf("Group: 5");
     
     servo_initialize();
-    
-    while(TRUE) {
-    
-        servo_setduty(0, 1000);
-        servo_setduty(1, 1000);
-        __delay_ms(3000);
+    touchscreen_initialize();
+
+    while (TRUE)
+    {
+        uint16_t x, y;
         
-        servo_setduty(0, 2000);
-        servo_setduty(1, 1000);
-        __delay_ms(3000);
-        
-        servo_setduty(0, 2000);
-        servo_setduty(1, 2000);
-        __delay_ms(3000);
-        
-        servo_setduty(0, 1000);
-        servo_setduty(1, 2000);
-        __delay_ms(3000);
-   
+        //1
+        servo_setduty(0, PWM_MIN_US);
+        servo_setduty(1, PWM_MIN_US);
+
+        touchscreen_set_dimension(TOUCH_DIM_X);
+        x = touchscreen_read();
+        touchscreen_set_dimension(TOUCH_DIM_Y);
+        y = touchscreen_read();
+
+        lcd_locate(0, 6);
+        lcd_printf("X/Y = %3u/%3u", x, y);
+
+        __delay_ms(5000);
+
+        //2
+        servo_setduty(0, PWM_MAX_US);
+        servo_setduty(1, PWM_MIN_US);
+
+        touchscreen_set_dimension(TOUCH_DIM_X);
+        x = touchscreen_read();
+        touchscreen_set_dimension(TOUCH_DIM_Y);
+        y = touchscreen_read();
+
+        lcd_locate(0, 6);
+        lcd_printf("X/Y = %3u/%3u", x, y);
+
+        __delay_ms(5000);
+
+        //3
+        servo_setduty(0, PWM_MAX_US);
+        servo_setduty(1, PWM_MAX_US);
+
+        touchscreen_set_dimension(TOUCH_DIM_X);
+        x = touchscreen_read();
+        touchscreen_set_dimension(TOUCH_DIM_Y);
+        y = touchscreen_read();
+
+        lcd_locate(0, 6);
+        lcd_printf("X/Y = %3u/%3u", x, y);
+
+        __delay_ms(5000);
+
+        //4
+        servo_setduty(0, PWM_MIN_US);
+        servo_setduty(1, PWM_MAX_US);
+
+        touchscreen_set_dimension(TOUCH_DIM_X);
+        x = touchscreen_read();
+        touchscreen_set_dimension(TOUCH_DIM_Y);
+        y = touchscreen_read();
+
+        lcd_locate(0, 6);
+        lcd_printf("X/Y = %3u/%3u", x, y);
+
+        __delay_ms(5000);
     }
 }
