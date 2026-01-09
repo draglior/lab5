@@ -97,7 +97,7 @@ void touchscreen_set_dimension(uint8_t dim)
 {
     CLEARBIT(AD1CON1bits.ADON);
 
-    if (dim == 0)
+    if (dim == TOUCH_DIM_X)
     {
         CLEARBIT(PORTEbits.RE1);
         SETBIT(PORTEbits.RE2);
@@ -106,7 +106,7 @@ void touchscreen_set_dimension(uint8_t dim)
         // Select AN15 for X read
         AD1CHS0bits.CH0SA = 15;
     }
-    else if (dim == 1)
+    else if (dim == TOUCH_DIM_Y)
     {
         SETBIT(PORTEbits.RE1);
         CLEARBIT(PORTEbits.RE2);
@@ -149,8 +149,8 @@ void main_loop(void)
     touchscreen_initialize();
     
     //0
-    servo_setduty(0, 1700);
-    servo_setduty(1, 1700);
+    servo_setduty(0, 1500);
+    servo_setduty(1, 1800);
     __delay_ms(5000);
 
     while (TRUE)
@@ -167,7 +167,7 @@ void main_loop(void)
         y = touchscreen_read();
 
         lcd_locate(0, 6);
-        lcd_printf("X/Y = %3u/%3u", x, y);
+        lcd_printf("X/Y = %u/%u", x, y);
 
         __delay_ms(5000);
 
@@ -181,7 +181,7 @@ void main_loop(void)
         y = touchscreen_read();
 
         lcd_locate(0, 6);
-        lcd_printf("X/Y = %3u/%3u", x, y);
+        lcd_printf("X/Y = %u/%u", x, y);
 
         __delay_ms(5000);
 
@@ -195,7 +195,7 @@ void main_loop(void)
         y = touchscreen_read();
 
         lcd_locate(0, 6);
-        lcd_printf("X/Y = %3u/%3u", x, y);
+        lcd_printf("X/Y = %u/%u", x, y);
 
         __delay_ms(5000);
 
@@ -209,7 +209,7 @@ void main_loop(void)
         y = touchscreen_read();
 
         lcd_locate(0, 6);
-        lcd_printf("X/Y = %3u/%3u", x, y);
+        lcd_printf("X/Y = %u/%u", x, y);
 
         __delay_ms(5000);
     }
