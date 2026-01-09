@@ -60,27 +60,26 @@ void touchscreen_initialize(void)
     // ADC off during config
     CLEARBIT(AD1CON1bits.ADON);
 
+    //Set input pins
+    SETBIT(TRISBbits.TRISB15);
+    SETBIT(TRISBbits.TRISB9);
+    
     // AN15 (X) and AN9 (Y) as analog
     CLEARBIT(AD1PCFGLbits.PCFG15);
     CLEARBIT(AD1PCFGLbits.PCFG9);
     
-    AD1CON2 = 0;
-    
     // ADC basic config
     CLEARBIT(AD1CON1bits.AD12B);
     AD1CON1bits.FORM = 0;
-    AD1CON1bits.SSRC = 7;
-
-    AD1CON3bits.ADRC = 0;
+    AD1CON1bits.SSRC = 0x7;
+    AD1CON2 = 0;
+    CLEARBIT(AD1CON3bits.ADRC);
     AD1CON3bits.SAMC = 0x1F;
-    AD1CON3bits.ADCS = 15;
-
-    AD1CHS0bits.CH0SA = 15;
+    AD1CON3bits.ADCS = 0x2;
 
     // ADC on
     SETBIT(AD1CON1bits.ADON);
 }
-
 
 void servo_setduty(uint8_t servo, uint16_t duty_us){
     if (duty_us < 1000) duty_us = 1000;
@@ -130,18 +129,12 @@ void touchscreen_set_dimension(uint8_t dim)
 
 uint16_t touchscreen_read(void)
 {
-    // Start sampling
-    AD1CON1bits.SAMP = 1;
-    // End sampling, start conversion
-    AD1CON1bits.SAMP = 0;
-
-    // Wait for conversion to finish
-    while (AD1CON1bits.DONE == 0) { }
-    AD1CON1bits.DONE = 0;
-
-    // Return 10-bit result (0..1023) stored in 16-bit container
-    return (uint16_t)ADC1BUF0;
+    SETBIT(AD1CON1bits.SAMP);
+    while (!AD1CON1bits.DONE);
+    CLEARBIT(AD1CON1bits.DONE);
+    return ADC1BUF0;
 }
+
 
 
 void main_loop(void)
@@ -154,6 +147,11 @@ void main_loop(void)
     
     servo_initialize();
     touchscreen_initialize();
+    
+    //0
+    servo_setduty(0, 1700);
+    servo_setduty(1, 1700);
+    __delay_ms(5000);
 
     while (TRUE)
     {
