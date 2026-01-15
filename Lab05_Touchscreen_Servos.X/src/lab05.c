@@ -54,7 +54,9 @@ void touchscreen_initialize(void)
 
     // Safe state
     CLEARBIT(PORTEbits.RE1);
+    Nop();
     SETBIT(PORTEbits.RE2);
+    Nop();
     SETBIT(PORTEbits.RE3);
 
     // ADC off during config
@@ -100,8 +102,11 @@ void touchscreen_set_dimension(uint8_t dim)
     if (dim == TOUCH_DIM_X)
     {
         CLEARBIT(PORTEbits.RE1);
+        Nop();
         SETBIT(PORTEbits.RE2);
+        Nop();
         SETBIT(PORTEbits.RE3);
+        Nop();
 
         // Select AN15 for X read
         AD1CHS0bits.CH0SA = 15;
@@ -109,8 +114,11 @@ void touchscreen_set_dimension(uint8_t dim)
     else if (dim == TOUCH_DIM_Y)
     {
         SETBIT(PORTEbits.RE1);
+        Nop();
         CLEARBIT(PORTEbits.RE2);
+        Nop();
         CLEARBIT(PORTEbits.RE3);
+        Nop();
 
         // Select AN9 for Y read
         AD1CHS0bits.CH0SA = 9;
@@ -119,8 +127,11 @@ void touchscreen_set_dimension(uint8_t dim)
     else
     {
         SETBIT(PORTEbits.RE1);
+        Nop();
         SETBIT(PORTEbits.RE2);
+        Nop();
         SETBIT(PORTEbits.RE3);
+        Nop();
     }
     
     SETBIT(AD1CON1bits.ADON);
@@ -167,7 +178,7 @@ void main_loop(void)
         y = touchscreen_read();
 
         lcd_locate(0, 6);
-        lcd_printf("X/Y = %u/%u", x, y);
+        lcd_printf("X/Y = %u/%u  ", x, y);
 
         __delay_ms(5000);
 
@@ -181,7 +192,7 @@ void main_loop(void)
         y = touchscreen_read();
 
         lcd_locate(0, 6);
-        lcd_printf("X/Y = %u/%u", x, y);
+        lcd_printf("X/Y = %u/%u  ", x, y);
 
         __delay_ms(5000);
 
@@ -195,7 +206,7 @@ void main_loop(void)
         y = touchscreen_read();
 
         lcd_locate(0, 6);
-        lcd_printf("X/Y = %u/%u", x, y);
+        lcd_printf("X/Y = %u/%u  ", x, y);
 
         __delay_ms(5000);
 
@@ -209,7 +220,7 @@ void main_loop(void)
         y = touchscreen_read();
 
         lcd_locate(0, 6);
-        lcd_printf("X/Y = %u/%u", x, y);
+        lcd_printf("X/Y = %u/%u  ", x, y);
 
         __delay_ms(5000);
     }
